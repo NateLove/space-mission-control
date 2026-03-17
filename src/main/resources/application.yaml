@@ -1,11 +1,11 @@
 # ===========================================================
 # Space Mission Control - Quarkus Application Configuration
 #
-# Auth pattern: Secretless Broker (sidecar)
-# In production the app connects to localhost:1433 with no
-# credentials. The Secretless Broker sidecar intercepts the
-# connection, authenticates to Conjur via authn-k8s, and
-# injects DB credentials at the TDS protocol level.
+# Production auth pattern:
+#   Quarkus -> Secretless sidecar -> Conjur -> MSSQL
+#
+# Quarkus connects only to 127.0.0.1:1433.
+# Secretless handles real DB credentials via Conjur.
 # ===========================================================
 
 "%dev":
@@ -15,7 +15,7 @@
       username: sa
       password: "DevP@ssw0rd!"
       jdbc:
-        url: jdbc:sqlserver://localhost:1433;databaseName=MissionControl;encrypt=false;trustServerCertificate=true
+        url: jdbc:sqlserver://127.0.0.1:1433;databaseName=MissionControl;encrypt=false;trustServerCertificate=true
     hibernate-orm:
       database:
         generation: none
@@ -38,9 +38,6 @@
     flyway:
       migrate-at-start: false
 
-# Production config — Secretless Broker sidecar handles auth transparently.
-# The broker listens on localhost:1433 and proxies to the real mssql Service.
-# DB_NAME is the only env var needed; credentials are never present in the pod.
 quarkus:
   application:
     name: space-mission-control
@@ -48,9 +45,14 @@ quarkus:
 
   datasource:
     db-kind: mssql
-    # No username / password — Secretless injects them at the protocol layer
+
+    # Required so the SQL Server driver sends a normal login handshake.
+    # Secretless replaces these with the real credentials from Conjur.
+    username: placeholder
+    password: placeholder
+
     jdbc:
-      url: jdbc:sqlserver://localhost:1433;databaseName=${DB_NAME};encrypt=false;trustServerCertificate=true
+      url: jdbc:sqlserver://127.0.0.1:1433;databaseName=${DB_NAME};encrypt=false;trustServerCertificate=true;loginTimeout=5
 
   hibernate-orm:
     database:
@@ -71,7 +73,7 @@ quarkus:
     info-description: "Manage astronaut missions, crew assignments, and launch sequences"
 
   swagger-ui:
-    always-include: false
+    always-include: true
     path: /swagger-ui
 
   health:
@@ -81,33 +83,10 @@ quarkus:
   log:
     console:
       format: "%d{HH:mm:ss} %-5p [%c{2.}] (%t) %s%e%n"
-      json: false
     level: INFO
     category:
       "com.demo":
         level: DEBUG
-
-  # OpenShift / Kubernetes configuration
-  kubernetes:
-    deployment-target: openshift
-    labels:
-      app: space-mission-control
-      version: 1.0.0
-      app.kubernetes.io/part-of: space-mission-control
-    env:
-      vars:
-        CONJUR_APPLIANCE_URL: ""
-        CONJUR_ACCOUNT: ""
-        CONJUR_AUTHN_LOGIN: ""
-
-# Conjur connection metadata — used by the Secretless Broker sidecar.
-# All values must be supplied via environment variables at deploy time.
-# No namespace-specific defaults live here — the app is deployment-agnostic.
-conjur:
-  account: ${CONJUR_ACCOUNT}
-  appliance-url: ${CONJUR_APPLIANCE_URL}
-  authn-login: ${CONJUR_AUTHN_LOGIN}
-  ssl-certificate: ${CONJUR_SSL_CERTIFICATE:}
 
 mission:
   max-crew-size: 7

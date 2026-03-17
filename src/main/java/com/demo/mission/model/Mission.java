@@ -1,7 +1,7 @@
 package com.demo.mission.model;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
-import io.quarkus.hibernate.orm.panache.PanacheEntity;
+import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -13,7 +13,12 @@ import java.util.List;
 
 @Entity
 @Table(name = "missions")
-public class Mission extends PanacheEntity {
+public class Mission extends PanacheEntityBase {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "id")
+    public Long id;
 
     @NotBlank(message = "Mission name is required")
     @Size(max = 100, message = "Mission name must be 100 characters or fewer")
@@ -58,8 +63,6 @@ public class Mission extends PanacheEntity {
     public void preUpdate() {
         updatedAt = LocalDateTime.now();
     }
-
-    // ── Finders ──────────────────────────────────────────────────────────────
 
     public static List<Mission> findByStatus(MissionStatus status) {
         return list("status", status);

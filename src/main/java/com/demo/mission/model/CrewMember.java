@@ -1,7 +1,7 @@
 package com.demo.mission.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import io.quarkus.hibernate.orm.panache.PanacheEntity;
+import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -12,7 +12,12 @@ import java.util.List;
 
 @Entity
 @Table(name = "crew_members")
-public class CrewMember extends PanacheEntity {
+public class CrewMember extends PanacheEntityBase {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "id")
+    public Long id;
 
     @NotBlank(message = "First name is required")
     @Column(name = "first_name", nullable = false, length = 50)
@@ -60,8 +65,6 @@ public class CrewMember extends PanacheEntity {
     public Long getMissionId() {
         return mission != null ? mission.id : null;
     }
-
-    // ── Finders ──────────────────────────────────────────────────────────────
 
     public static List<CrewMember> findByRole(CrewRole role) {
         return list("role", role);
